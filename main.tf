@@ -1,7 +1,7 @@
 locals {
   user            = "debian"
-  ssh_public_key  = file("~/.ssh/otus.pub")
-  ssh_private_key = file("~/.ssh/otus")
+  ssh_public_key  = "~/.ssh/otus.pub"
+  ssh_private_key = "~/.ssh/otus"
 }
 
 resource "yandex_vpc_network" "vpc" {
@@ -47,21 +47,21 @@ resource "yandex_compute_instance" "instance" {
   }
 
   metadata = {
-    ssh-keys           = "${local.user}:${local.ssh_public_key}"
+    ssh-keys           = "${local.user}:${file(local.ssh_public_key)}"
   }
 
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
 
     connection {
-      host        = yandex_compute_instance.instance[count.index].network_interface[0].nat_ip_address
+      host        = self.network_interface[0].nat_ip_address
       type        = "ssh"
       user        = local.user
-      private_key = local.ssh_private_key
+      private_key = file(local.ssh_private_key)
     }
   }
 
   provisioner "local-exec" {
-    command = "ansible-playbook -u '${local.user}' --private-key '${local.ssh_private_key}' --become -i '${yandex_compute_instance.instance[count.index].network_interface.0.nat_ip_address},' provision.yml"
+    command = "ansible-playbook -u '${local.user}' --private-key '${local.ssh_private_key}' --become -i '${self.network_interface.0.nat_ip_address},' provision.yml"
   }
 }
