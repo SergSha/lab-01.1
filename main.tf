@@ -17,11 +17,12 @@ resource "yandex_vpc_subnet" "subnet" {
   network_id     = yandex_vpc_network.vpc.id
 }
 
-resource "yandex_compute_instance" "instance" {
+resource "yandex_compute_instance" "instances" {
   count = 3
 
-  name        = "${var.vm_name}-${count.index}"
-  hostname    = "${var.vm_name}-${count.index}"
+  #domain_name   = "${local.project_name}-master${count.index}"
+  name        = "${var.vm_name}-${count.index + 1}"
+  hostname    = "${var.vm_name}-${count.index + 1}"
   platform_id = var.platform_id
   zone        = var.zone
   # folder_id   = var.folder_id
@@ -62,6 +63,15 @@ resource "yandex_compute_instance" "instance" {
   }
 
   provisioner "local-exec" {
-    command = "ansible-playbook -u '${local.user}' --private-key '${local.ssh_private_key}' --become -i '${self.network_interface.0.nat_ip_address},' provision.yml"
+    command = "ansible-playbook -u '${local.user}' --private-key '${local.ssh_private_key}' --become -i '${self.network_interface[0].nat_ip_address},' provision.yml"
   }
+}
+
+resource "local_file" "inventory_file" {
+  content = templatefile("./templates/inventory.tpl",
+    {
+      instances = yandex_compute_instance.instances
+    }
+  )
+  filename = "./inventory.ini"
 }
